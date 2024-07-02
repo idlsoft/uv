@@ -95,7 +95,7 @@ pub(crate) async fn sync(
 
     // Discover or create the virtual environment.
     let venv = project::get_or_init_environment(
-        target.workspace(),
+        &project,
         python.as_deref().map(PythonRequest::parse),
         python_preference,
         python_downloads,
@@ -113,7 +113,7 @@ pub(crate) async fn sync(
         locked,
         frozen,
         false,
-        target.workspace(),
+        &project,
         venv.interpreter(),
         settings.as_ref().into(),
         LowerBound::Warn,

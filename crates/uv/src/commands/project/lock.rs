@@ -33,7 +33,7 @@ use uv_resolver::{
 };
 use uv_types::{BuildContext, BuildIsolation, EmptyInstalledPackages, HashStrategy};
 use uv_warnings::{warn_user, warn_user_once};
-use uv_workspace::{DiscoveryOptions, Workspace};
+use uv_workspace::{DiscoveryOptions, VirtualProject};
 
 use crate::commands::pip::loggers::{DefaultResolveLogger, ResolveLogger, SummaryResolveLogger};
 use crate::commands::project::{
@@ -87,11 +87,11 @@ pub(crate) async fn lock(
     printer: Printer,
 ) -> anyhow::Result<ExitStatus> {
     // Find the project requirements.
-    let workspace = Workspace::discover(project_dir, &DiscoveryOptions::default()).await?;
+    let project = VirtualProject::discover(project_dir, &DiscoveryOptions::default()).await?;
 
     // Find an interpreter for the project
     let interpreter = ProjectInterpreter::discover(
-        &workspace,
+        &project,
         python.as_deref().map(PythonRequest::parse),
         python_preference,
         python_downloads,
@@ -111,7 +111,7 @@ pub(crate) async fn lock(
         locked,
         frozen,
         dry_run,
-        &workspace,
+        &project,
         &interpreter,
         settings.as_ref(),
         LowerBound::Warn,
@@ -176,7 +176,7 @@ pub(super) async fn do_safe_lock(
     locked: bool,
     frozen: bool,
     dry_run: bool,
-    workspace: &Workspace,
+    project: &VirtualProject,
     interpreter: &Interpreter,
     settings: ResolverSettingsRef<'_>,
     bounds: LowerBound,
@@ -190,19 +190,19 @@ pub(super) async fn do_safe_lock(
 ) -> Result<LockResult, ProjectError> {
     if frozen {
         // Read the existing lockfile, but don't attempt to lock the project.
-        let existing = read(workspace)
+        let existing = read(project)
             .await?
             .ok_or_else(|| ProjectError::MissingLockfile)?;
         Ok(LockResult::Unchanged(existing))
     } else if locked {
         // Read the existing lockfile.
-        let existing = read(workspace)
+        let existing = read(project)
             .await?
             .ok_or_else(|| ProjectError::MissingLockfile)?;
 
         // Perform the lock operation, but don't write the lockfile to disk.
         let result = do_lock(
-            workspace,
+            project,
             interpreter,
             Some(existing),
             settings,
@@ -225,11 +225,11 @@ pub(super) async fn do_safe_lock(
         Ok(result)
     } else {
         // Read the existing lockfile.
-        let existing = read(workspace).await?;
+        let existing = read(project).await?;
 
         // Perform the lock operation.
         let result = do_lock(
-            workspace,
+            project,
             interpreter,
             existing,
             settings,
@@ -247,7 +247,7 @@ pub(super) async fn do_safe_lock(
         // If the lockfile changed, write it to disk.
         if !dry_run {
             if let LockResult::Changed(_, lock) = &result {
-                commit(lock, workspace).await?;
+                commit(lock, project).await?;
             }
         }
 
@@ -257,7 +257,7 @@ pub(super) async fn do_safe_lock(
 
 /// Lock the project requirements into a lockfile.
 async fn do_lock(
-    workspace: &Workspace,
+    project: &VirtualProject,
     interpreter: &Interpreter,
     existing_lock: Option<Lock>,
     settings: ResolverSettingsRef<'_>,
@@ -292,30 +292,21 @@ async fn do_lock(
     } = settings;
 
     // Collect the requirements, etc.
-    let requirements = workspace.non_project_requirements().collect::<Vec<_>>();
-    let overrides = workspace.overrides().into_iter().collect::<Vec<_>>();
-    let constraints = workspace.constraints();
+    let requirements = project
+        .workspace()
+        .non_project_requirements()
+        .collect::<Vec<_>>();
+    let overrides = project.overrides().into_iter().collect::<Vec<_>>();
+    let constraints = project.constraints();
     let dev = vec![DEV_DEPENDENCIES.clone()];
     let source_trees = vec![];
 
     // Collect the list of members.
-    let members = {
-        let mut members = workspace.packages().keys().cloned().collect::<Vec<_>>();
-        members.sort();
-
-        // If this is a non-virtual project with a single member, we can omit it from the lockfile.
-        // If any members are added or removed, it will inherently mismatch. If the member is
-        // renamed, it will also mismatch.
-        if members.len() == 1 && !workspace.is_non_project() {
-            members.clear();
-        }
-
-        members
-    };
+    let members = project.packages_to_lock();
 
     // Collect the list of supported environments.
     let environments = {
-        let environments = workspace.environments();
+        let environments = project.environments();
 
         // Ensure that the environments are disjoint.
         if let Some(environments) = &environments {
@@ -351,7 +342,7 @@ async fn do_lock(
 
     // Determine the supported Python range. If no range is defined, and warn and default to the
     // current minor version.
-    let requires_python = find_requires_python(workspace)?;
+    let requires_python = find_requires_python(project.workspace())?;
 
     let requires_python = if let Some(requires_python) = requires_python {
         if requires_python.is_unbounded() {
@@ -478,7 +469,7 @@ async fn do_lock(
     let existing_lock = if let Some(existing_lock) = existing_lock {
         match ValidatedLock::validate(
             existing_lock,
-            workspace,
+            project,
             &members,
             &requirements,
             &constraints,
@@ -572,7 +563,7 @@ async fn do_lock(
             let resolution = pip::operations::resolve(
                 ExtrasResolver::new(&hasher, &state.index, database)
                     .with_reporter(ResolverReporter::from(printer))
-                    .resolve(workspace.members_requirements())
+                    .resolve(project.members_requirements())
                     .await?
                     .into_iter()
                     .chain(requirements.iter().cloned())
@@ -592,7 +583,7 @@ async fn do_lock(
                 source_trees,
                 // The root is always null in workspaces, it "depends on" the projects
                 None,
-                Some(workspace.packages().keys().cloned().collect()),
+                Some(project.packages_to_resolve().cloned().collect()),
                 &extras,
                 preferences,
                 EmptyInstalledPackages,
@@ -626,17 +617,18 @@ async fn do_lock(
                 overrides,
                 dependency_metadata.values().cloned(),
             )
-            .relative_to(workspace)?;
+            .relative_to(project.workspace())?;
 
             let previous = existing_lock.map(ValidatedLock::into_lock);
-            let lock = Lock::from_resolution_graph(&resolution, workspace.install_path())?
-                .with_manifest(manifest)
-                .with_supported_environments(
-                    environments
-                        .cloned()
-                        .map(SupportedEnvironments::into_markers)
-                        .unwrap_or_default(),
-                );
+            let lock =
+                Lock::from_resolution_graph(&resolution, project.workspace().install_path())?
+                    .with_manifest(manifest)
+                    .with_supported_environments(
+                        environments
+                            .cloned()
+                            .map(SupportedEnvironments::into_markers)
+                            .unwrap_or_default(),
+                    );
 
             Ok(LockResult::Changed(previous, lock))
         }
@@ -661,7 +653,7 @@ impl ValidatedLock {
     /// Validate a [`Lock`] against the workspace requirements.
     async fn validate<Context: BuildContext>(
         lock: Lock,
-        workspace: &Workspace,
+        project: &VirtualProject,
         members: &[PackageName],
         requirements: &[Requirement],
         constraints: &[Requirement],
@@ -791,7 +783,7 @@ impl ValidatedLock {
         // Determine whether the lockfile satisfies the workspace requirements.
         match lock
             .satisfies(
-                workspace,
+                project.workspace(),
                 members,
                 requirements,
                 constraints,
@@ -915,17 +907,17 @@ impl ValidatedLock {
 }
 
 /// Write the lockfile to disk.
-async fn commit(lock: &Lock, workspace: &Workspace) -> Result<(), ProjectError> {
+async fn commit(lock: &Lock, project: &VirtualProject) -> Result<(), ProjectError> {
     let encoded = lock.to_toml()?;
-    fs_err::tokio::write(workspace.install_path().join("uv.lock"), encoded).await?;
+    fs_err::tokio::write(project.lockfile(), encoded).await?;
     Ok(())
 }
 
 /// Read the lockfile from the workspace.
 ///
 /// Returns `Ok(None)` if the lockfile does not exist.
-pub(crate) async fn read(workspace: &Workspace) -> Result<Option<Lock>, ProjectError> {
-    match fs_err::tokio::read_to_string(&workspace.install_path().join("uv.lock")).await {
+pub(crate) async fn read(project: &VirtualProject) -> Result<Option<Lock>, ProjectError> {
+    match fs_err::tokio::read_to_string(&project.lockfile()).await {
         Ok(encoded) => match toml::from_str(&encoded) {
             Ok(lock) => Ok(Some(lock)),
             Err(err) => {

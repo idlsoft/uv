@@ -157,7 +157,7 @@ pub(crate) async fn remove(
 
     // Discover or create the virtual environment.
     let venv = project::get_or_init_environment(
-        project.workspace(),
+        &project,
         python.as_deref().map(PythonRequest::parse),
         python_preference,
         python_downloads,
@@ -176,7 +176,7 @@ pub(crate) async fn remove(
         locked,
         frozen,
         false,
-        project.workspace(),
+        &project,
         venv.interpreter(),
         settings.as_ref().into(),
         LowerBound::Allow,
