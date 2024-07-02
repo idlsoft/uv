@@ -64,7 +64,8 @@ async fn albatross_in_example() {
               ],
               "optional-dependencies": null
             },
-            "pyproject_toml": "[PYPROJECT_TOML]"
+            "pyproject_toml": "[PYPROJECT_TOML]",
+            "private_lock": false
           }
         },
         "sources": {},
@@ -117,7 +118,8 @@ async fn albatross_project_in_excluded() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -170,7 +172,8 @@ async fn albatross_root_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "bird-feeder": {
                 "root": "[ROOT]/albatross-root-workspace/packages/bird-feeder",
@@ -184,7 +187,8 @@ async fn albatross_root_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "seeds": {
                 "root": "[ROOT]/albatross-root-workspace/packages/seeds",
@@ -197,7 +201,8 @@ async fn albatross_root_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {
@@ -233,6 +238,7 @@ async fn albatross_root_workspace() {
                     "members": [
                       "packages/*"
                     ],
+                    "private-members": null,
                     "exclude": null
                   },
                   "managed": null,
@@ -282,7 +288,8 @@ async fn albatross_virtual_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "bird-feeder": {
                 "root": "[ROOT]/albatross-virtual-workspace/packages/bird-feeder",
@@ -296,7 +303,8 @@ async fn albatross_virtual_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "seeds": {
                 "root": "[ROOT]/albatross-virtual-workspace/packages/seeds",
@@ -309,7 +317,8 @@ async fn albatross_virtual_workspace() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -324,6 +333,7 @@ async fn albatross_virtual_workspace() {
                     "members": [
                       "packages/*"
                     ],
+                    "private-members": null,
                     "exclude": null
                   },
                   "managed": null,
@@ -371,7 +381,8 @@ async fn albatross_just_project() {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -491,7 +502,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "seeds": {
                 "root": "[ROOT]/packages/seeds",
@@ -504,7 +516,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -527,6 +540,7 @@ async fn exclude_package() -> Result<()> {
                     "members": [
                       "packages/*"
                     ],
+                    "private-members": null,
                     "exclude": [
                       "packages/bird-feeder"
                     ]
@@ -593,7 +607,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "seeds": {
                 "root": "[ROOT]/packages/seeds",
@@ -606,7 +621,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -630,6 +646,7 @@ async fn exclude_package() -> Result<()> {
                       "packages/seeds",
                       "packages/bird-feeder"
                     ],
+                    "private-members": null,
                     "exclude": [
                       "packages/bird-feeder"
                     ]
@@ -696,7 +713,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "bird-feeder": {
                 "root": "[ROOT]/packages/bird-feeder",
@@ -709,7 +727,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               },
               "seeds": {
                 "root": "[ROOT]/packages/seeds",
@@ -722,7 +741,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -746,6 +766,7 @@ async fn exclude_package() -> Result<()> {
                       "packages/seeds",
                       "packages/bird-feeder"
                     ],
+                    "private-members": null,
                     "exclude": [
                       "packages"
                     ]
@@ -812,7 +833,8 @@ async fn exclude_package() -> Result<()> {
                   ],
                   "optional-dependencies": null
                 },
-                "pyproject_toml": "[PYPROJECT_TOML]"
+                "pyproject_toml": "[PYPROJECT_TOML]",
+                "private_lock": false
               }
             },
             "sources": {},
@@ -836,6 +858,7 @@ async fn exclude_package() -> Result<()> {
                       "packages/seeds",
                       "packages/bird-feeder"
                     ],
+                    "private-members": null,
                     "exclude": [
                       "packages/*"
                     ]
