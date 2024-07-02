@@ -209,7 +209,7 @@ pub(crate) async fn add(
 
         // Discover or create the virtual environment.
         let venv = project::get_or_init_environment(
-            project.workspace(),
+            &project,
             python.as_deref().map(PythonRequest::parse),
             python_preference,
             python_downloads,
@@ -661,7 +661,7 @@ async fn lock_and_sync(
     let mut lock = project::lock::do_safe_lock(
         locked,
         frozen,
-        project.workspace(),
+        &project,
         venv.interpreter(),
         settings.into(),
         bounds,
@@ -775,7 +775,7 @@ async fn lock_and_sync(
             lock = project::lock::do_safe_lock(
                 locked,
                 frozen,
-                project.workspace(),
+                &project,
                 venv.interpreter(),
                 settings.into(),
                 bounds,
