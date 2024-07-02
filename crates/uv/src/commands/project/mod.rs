@@ -38,7 +38,7 @@ use uv_types::{BuildIsolation, EmptyInstalledPackages, HashStrategy};
 use uv_warnings::{warn_user, warn_user_once};
 use uv_workspace::dependency_groups::DependencyGroupError;
 use uv_workspace::pyproject::PyProjectToml;
-use uv_workspace::Workspace;
+use uv_workspace::{VirtualProject, Workspace};
 
 use crate::commands::pip::loggers::{InstallLogger, ResolveLogger};
 use crate::commands::pip::operations::{Changelog, Modifications};
@@ -376,7 +376,7 @@ impl WorkspacePython {
 impl ProjectInterpreter {
     /// Discover the interpreter to use in the current [`Workspace`].
     pub(crate) async fn discover(
-        workspace: &Workspace,
+        project: &VirtualProject,
         python_request: Option<PythonRequest>,
         python_preference: PythonPreference,
         python_downloads: PythonDownloads,
@@ -390,10 +390,10 @@ impl ProjectInterpreter {
             source,
             python_request,
             requires_python,
-        } = WorkspacePython::from_request(python_request, workspace).await?;
+        } = WorkspacePython::from_request(python_request, project.workspace()).await?;
 
         // Read from the virtual environment first.
-        let venv = workspace.venv();
+        let venv = project.venv();
         match PythonEnvironment::from_root(&venv, cache) {
             Ok(venv) => {
                 if python_request.as_ref().map_or(true, |request| {
@@ -494,7 +494,7 @@ impl ProjectInterpreter {
         }
 
         if let Some(requires_python) = requires_python.as_ref() {
-            validate_requires_python(&interpreter, workspace, requires_python, &source)?;
+            validate_requires_python(&interpreter, project.workspace(), requires_python, &source)?;
         }
 
         Ok(Self::Interpreter(interpreter))
@@ -511,7 +511,7 @@ impl ProjectInterpreter {
 
 /// Initialize a virtual environment for the current project.
 pub(crate) async fn get_or_init_environment(
-    workspace: &Workspace,
+    project: &VirtualProject,
     python: Option<PythonRequest>,
     python_preference: PythonPreference,
     python_downloads: PythonDownloads,
@@ -521,7 +521,7 @@ pub(crate) async fn get_or_init_environment(
     printer: Printer,
 ) -> Result<PythonEnvironment, ProjectError> {
     match ProjectInterpreter::discover(
-        workspace,
+        project,
         python,
         python_preference,
         python_downloads,
@@ -537,7 +537,7 @@ pub(crate) async fn get_or_init_environment(
 
         // Otherwise, create a virtual environment with the discovered interpreter.
         ProjectInterpreter::Interpreter(interpreter) => {
-            let venv = workspace.venv();
+            let venv = project.venv();
 
             // Avoid removing things that are not virtual environments
             let should_remove = match (venv.try_exists(), venv.join("pyvenv.cfg").try_exists()) {
@@ -582,22 +582,8 @@ pub(crate) async fn get_or_init_environment(
                 venv.user_display().cyan()
             )?;
 
-            // Determine a prompt for the environment, in order of preference:
-            //
-            // 1) The name of the project
-            // 2) The name of the directory at the root of the workspace
-            // 3) No prompt
-            let prompt = workspace
-                .pyproject_toml()
-                .project
-                .as_ref()
-                .map(|p| p.name.to_string())
-                .or_else(|| {
-                    workspace
-                        .install_path()
-                        .file_name()
-                        .map(|f| f.to_string_lossy().to_string())
-                })
+            let prompt = project
+                .venv_name()
                 .map(uv_virtualenv::Prompt::Static)
                 .unwrap_or(uv_virtualenv::Prompt::None);
 

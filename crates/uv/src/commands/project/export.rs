@@ -76,7 +76,7 @@ pub(crate) async fn export(
     validate_dependency_groups(project.pyproject_toml(), &dev)?;
     let defaults = default_dependency_groups(project.pyproject_toml())?;
 
-    let VirtualProject::Project(project) = project else {
+    let VirtualProject::Project(_) = project else {
         return Err(anyhow::anyhow!("Legacy non-project roots are not supported in `uv export`; add a `[project]` table to your `pyproject.toml` to enable exports"));
     };
 
@@ -87,7 +87,7 @@ pub(crate) async fn export(
     } else {
         // Find an interpreter for the project
         interpreter = ProjectInterpreter::discover(
-            project.workspace(),
+            &project,
             python.as_deref().map(PythonRequest::parse),
             python_preference,
             python_downloads,
@@ -112,7 +112,7 @@ pub(crate) async fn export(
     // Lock the project.
     let lock = match do_safe_lock(
         mode,
-        project.workspace(),
+        &project,
         settings.as_ref(),
         LowerBound::Warn,
         &state,
@@ -155,7 +155,7 @@ pub(crate) async fn export(
         ExportFormat::RequirementsTxt => {
             let export = RequirementsTxtExport::from_lock(
                 &lock,
-                project.project_name(),
+                project.project_name().unwrap(),
                 &extras,
                 &dev.with_defaults(defaults),
                 editable,

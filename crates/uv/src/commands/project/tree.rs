@@ -9,7 +9,7 @@ use uv_configuration::{Concurrency, DevGroupsSpecification, LowerBound, TargetTr
 use uv_pep508::PackageName;
 use uv_python::{PythonDownloads, PythonPreference, PythonRequest, PythonVersion};
 use uv_resolver::TreeDisplay;
-use uv_workspace::{DiscoveryOptions, Workspace};
+use uv_workspace::{DiscoveryOptions, VirtualProject};
 
 use crate::commands::pip::loggers::DefaultResolveLogger;
 use crate::commands::pip::resolution_markers;
@@ -47,11 +47,11 @@ pub(crate) async fn tree(
     printer: Printer,
 ) -> Result<ExitStatus> {
     // Find the project requirements.
-    let workspace = Workspace::discover(project_dir, &DiscoveryOptions::default()).await?;
+    let project = VirtualProject::discover(project_dir, &DiscoveryOptions::default()).await?;
 
     // Determine the default groups to include.
-    validate_dependency_groups(workspace.pyproject_toml(), &dev)?;
-    let defaults = default_dependency_groups(workspace.pyproject_toml())?;
+    validate_dependency_groups(project.workspace().pyproject_toml(), &dev)?;
+    let defaults = default_dependency_groups(project.workspace().pyproject_toml())?;
 
     // Find an interpreter for the project, unless `--frozen` and `--universal` are both set.
     let interpreter = if frozen && universal {
@@ -59,7 +59,7 @@ pub(crate) async fn tree(
     } else {
         Some(
             ProjectInterpreter::discover(
-                &workspace,
+                &project,
                 python.as_deref().map(PythonRequest::parse),
                 python_preference,
                 python_downloads,
@@ -88,7 +88,7 @@ pub(crate) async fn tree(
     // Update the lockfile, if necessary.
     let lock = project::lock::do_safe_lock(
         mode,
-        &workspace,
+        &project,
         settings.as_ref(),
         LowerBound::Allow,
         &state,
